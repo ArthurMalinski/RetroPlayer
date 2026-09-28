@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rádio Retrô — sua playlist com locutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#1c1130;
+    --bg-2:#2a1a45;
+    --wood:#7a4a2b;
+    --wood-dark:#5c3820;
+    --cream:#f6e9d0;
+    --pink:#ff77c8;
+    --orange:#ffa552;
+    --cyan:#3fe3e0;
+    --violet:#8a5cf6;
+    --amber-glow: 0 0 8px rgba(255,165,82,.8), 0 0 18px rgba(255,119,200,.4);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% 0%, #3a2255 0%, var(--bg-1) 55%, #0f0a1c 100%);
+    font-family:'VT323', monospace;
+    color:var(--cream);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px 14px;
+    overflow-x:hidden;
+    position:relative;
+  }
+
+  /* faint starry grain */
+  body::before{
+    content:"";
+    position:fixed; inset:0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.5) 0, transparent 100%),
+      radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,.35) 0, transparent 100%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.4) 0, transparent 100%),
+      radial-gradient(1px 1px at 90% 20%, rgba(255,255,255,.3) 0, transparent 100%),
+      radial-gradient(1px 1px at 55% 45%, rgba(255,255,255,.25) 0, transparent 100%);
+    pointer-events:none;
+    opacity:.6;
+  }
+
+  /* sunset grid floor, decorative, sits behind console */
+  .grid-floor{
+    position:fixed; left:0; right:0; bottom:0; height:38vh;
+    background-image: linear-gradient(rgba(255,119,200,.35) 1px, transparent 1px),
+                       linear-gradient(90deg, rgba(255,119,200,.35) 1px, transparent 1px);
+    background-size: 48px 48px;
+    transform: perspective(280px) rotateX(58deg);
+    transform-origin:bottom;
+    -webkit-mask-image: linear-gradient(to top, black 10%, transparent 85%);
+            mask-image: linear-gradient(to top, black 10%, transparent 85%);
+    opacity:.55;
+    pointer-events:none;
+  }
+
+  h1,h2,h3{ font-family:'Press Start 2P', monospace; }
+
+  .console{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:560px;
+    background: linear-gradient(160deg, var(--wood) 0%, var(--wood-dark) 100%);
+    border-radius:22px;
+    padding:20px;
+    box-shadow:
+      0 18px 0 rgba(0,0,0,.35),
+      0 22px 40px rgba(0,0,0,.55),
+      inset 0 2px 0 rgba(255,255,255,.15);
+    border:3px solid #472c17;
+  }
+
+  .brand{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:2px 6px 16px;
+  }
+  .brand-title{
+    font-size:13px;
+    color:var(--cream);
+    letter-spacing:1px;
+    text-shadow: var(--amber-glow);
+  }
+  .brand-sub{
+    font-size:16px;
+    color:var(--cyan);
+    opacity:.85;
+  }
+
+  .dial-row{ display:flex; gap:10px; align-items:center; }
+  .led{
+    width:10px; height:10px; border-radius:50%;
+    background:#ff4d4d; box-shadow:0 0 6px #ff4d4d;
+    opacity:.35;
+  }
+  .led.on{ background:#5dff7a; box-shadow:0 0 8px #5dff7a; opacity:1; }
+
+  /* screen */
+  .screen{
+    background: linear-gradient(180deg,#101a14,#0a120d);
+    border-radius:12px;
+    border:4px solid #12210f;
+    padding:16px;
+    min-height:230px;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.7), inset 0 0 40px rgba(80,255,140,.06);
+    position:relative;
+    overflow:hidden;
+  }
+  .screen::after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 1px, transparent 2px, transparent 3px);
+    pointer-events:none;
+  }
+  .screen-text{ color:#8dffb0; text-shadow:0 0 6px rgba(141,255,176,.7); }
+
+  .panel{ display:none; }
+  .panel.active{ display:block; }
+
+  /* setup panel */
+  .field label{ display:block; font-size:15px; margin-bottom:4px; color:var(--cyan); }
+  .field input{
+    width:100%;
+    font-family:'VT323', monospace;
+    font-size:18px;
+    background:#0d1710; color:#c9ffd6;
+    border:2px solid #2c4a30; border-radius:6px;
+    padding:8px 10px; margin-bottom:12px;
+  }
+  .field input:focus{ outline:2px solid var(--cyan); }
+  .tiny{ font-size:14px; color:#9fdcae; line-height:1.4; opacity:.9; }
+  .tiny a{ color:var(--cyan); }
+  details{ margin:10px 0 14px; }
+  details summary{ cursor:pointer; color:var(--orange); font-size:15px; }
+  details ol{ font-size:14px; color:#c9ffd6; padding-left:18px; line-height:1.5; }
+
+  .btn{
+    font-family:'VT323', monospace;
+    font-size:18px;
+    letter-spacing:.5px;
+    padding:10px 18px;
+    border-radius:8px;
+    border:2px solid #3a2010;
+    background: linear-gradient(180deg, var(--orange), #e56a2f);
+    color:#2a1102;
+    cursor:pointer;
+    box-shadow: 0 3px 0 #a34319, 0 6px 10px rgba(0,0,0,.4);
+  }
+  .btn:hover{ filter:brightness(1.08); }
+  .btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #a34319; }
+  .btn.secondary{ background:linear-gradient(180deg,#3fe3e0,#1fb7b4); color:#04302f; box-shadow:0 3px 0 #0d7472,0 6px 10px rgba(0,0,0,.4);}
+
+  /* playlist picker */
+  .tape-list{ display:flex; flex-direction:column; gap:8px; max-height:210px; overflow-y:auto; padding-right:4px; }
+  .tape{
+    display:flex; align-items:center; gap:10px;
+    background:#12200f; border:2px solid #2c4a30; border-radius:8px;
+    padding:8px 10px; cursor:pointer; color:#c9ffd6; font-size:17px;
+  }
+  .tape:hover{ border-color:var(--cyan); }
+  .tape img{ width:34px; height:34px; border-radius:4px; object-fit:cover; }
+
+  /* now playing */
+  .np{ display:flex; gap:14px; align-items:center; }
+  .art-wrap{ position:relative; width:96px; height:96px; flex:0 0 auto; }
+  .art-wrap img{ width:100%; height:100%; border-radius:50%; object-fit:cover; border:4px solid #1a1a1a; }
+  .art-wrap.spin img{ animation: spin 6s linear infinite; }
+  @keyframes spin{ from{ transform:rotate(0);} to{ transform:rotate(360deg);} }
+  .art-wrap::after{
+    content:""; position:absolute; inset:38%; border-radius:50%;
+    background:#0a120d; border:2px solid #333;
+  }
+
+  .np-info .track{ font-size:20px; color:var(--cream); }
+  .np-info .artist{ font-size:17px; color:var(--orange); }
+  .np-info .album{ font-size:14px; color:#9fdcae; }
+
+  .caption{
+    margin-top:10px; font-size:15px; color:#8dffb0; min-height:44px;
+    border-top:1px dashed #2c4a30; padding-top:8px;
+  }
+  .caption.speaking::before{ content:"🎙 "; }
+
+  .vu{ display:flex; gap:3px; align-items:flex-end; height:16px; margin-top:8px; }
+  .vu span{ width:4px; background:var(--cyan); opacity:.6; animation:vu 1s ease-in-out infinite; }
+  .vu span:nth-child(1){ animation-delay:.0s; height:40%; }
+  .vu span:nth-child(2){ animation-delay:.15s; height:80%; }
+  .vu span:nth-child(3){ animation-delay:.3s; height:55%; }
+  .vu span:nth-child(4){ animation-delay:.45s; height:90%; }
+  .vu span:nth-child(5){ animation-delay:.6s; height:35%; }
+  .vu span:nth-child(6){ animation-delay:.75s; height:70%; }
+  .vu.paused span{ animation-play-state:paused; opacity:.25; }
+  @keyframes vu{ 0%,100%{ transform:scaleY(.4);} 50%{ transform:scaleY(1);} }
+
+  /* controls */
+  .controls{ display:flex; align-items:center; justify-content:center; gap:16px; margin-top:16px; }
+  .ctrl-btn{
+    width:46px; height:46px; border-radius:50%;
+    background: linear-gradient(180deg,#3a2015,#241209);
+    border:2px solid #150b04; color:var(--cream);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:16px;
+    box-shadow: 0 3px 0 #0d0602, inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .ctrl-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #0d0602; }
+  .ctrl-btn.big{ width:58px; height:58px; font-size:20px; }
+
+  .volume-row{ display:flex; align-items:center; gap:8px; margin-top:14px; }
+  .volume-row span{ font-size:14px; color:#9fdcae; }
+  input[type=range]{ flex:1; accent-color: var(--pink); }
+
+  .status-line{ font-size:14px; color:#e8c9a0; margin-top:14px; text-align:center; min-height:18px; }
+
+  .footer-note{ text-align:center; font-size:13px; color:#c9b8a5; margin-top:18px; opacity:.8; }
+
+  @media (max-width:420px){
+    .np{ flex-direction:column; align-items:flex-start; }
+    .brand-title{ font-size:11px; }
+  }
+</style>
+</head>
+<body>
+<div class="grid-floor"></div>
+
+<div class="console">
+  <div class="brand">
+    <div>
+      <div class="brand-title">RÁDIO RETRÔ</div>
+      <div class="brand-sub">FM 88.0 · sua playlist, com locutor</div>
+    </div>
+    <div class="dial-row">
+      <div class="led" id="ledAuth" title="conectado ao Spotify"></div>
+      <div class="led" id="ledPlayer" title="player pronto"></div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <!-- setup -->
+    <div class="panel active" id="panel-setup">
+      <div class="screen-text" style="font-size:17px; margin-bottom:8px;">bem-vindo(a) à sua rádio. vamos sintonizar o Spotify:</div>
+      <div class="field">
+        <label for="clientId">Client ID do seu app Spotify</label>
+        <input id="clientId" type="text" placeholder="cole aqui o Client ID">
+      </div>
+      <details>
+        <summary>como conseguir o Client ID (só na primeira vez)</summary>
+        <ol>
+          <li>Acesse <span class="tiny"><a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a></span> e faça login com sua conta Spotify.</li>
+          <li>Clique em "Create app". Dê qualquer nome, ex: "Rádio Retrô".</li>
+          <li>Em "Redirect URIs" cole exatamente: <span id="redirectShow" class="tiny"></span></li>
+          <li>Marque "Web Playback SDK" e "Web API" em APIs used, salve.</li>
+          <li>Abra o app criado, copie o <b>Client ID</b> e cole aqui em cima.</li>
+        </ol>
+        <div class="tiny">Precisa de conta Spotify <b>Premium</b> para o player funcionar — é uma exigência do próprio Spotify para controlar a reprodução pelo navegador.</div>
+      </details>
+      <button class="btn" id="btnConnect">🔌 conectar ao Spotify</button>
+      <div class="tiny" style="margin-top:10px;">Dica: abra esta página por um servidor local (ex: <code>python3 -m http.server 8888</code>) e acesse via <code>http://localhost:8888</code> — abrir direto do arquivo não funciona por causa da autenticação do Spotify.</div>
+    </div>
+
+    <!-- playlists -->
+    <div class="panel" id="panel-playlists">
+      <div class="screen-text" style="font-size:17px; margin-bottom:8px;">escolha uma fita (playlist):</div>
+      <div class="tape-list" id="tapeList"></div>
+    </div>
+
+    <!-- now playing -->
+    <div class="panel" id="panel-player">
+      <div class="np">
+        <div class="art-wrap" id="artWrap">
+          <img id="trackArt" src="" alt="capa do álbum">
+        </div>
+        <div class="np-info">
+          <div class="track" id="trackName">—</div>
+          <div class="artist" id="trackArtist">—</div>
+          <div class="album" id="trackAlbum">—</div>
+        </div>
+      </div>
+      <div class="vu paused" id="vu">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="caption" id="caption">o locutor vai falar algo antes da próxima faixa...</div>
+    </div>
+  </div>
+
+  <div class="controls" id="playerControls" style="display:none;">
+    <div class="ctrl-btn" id="btnPrev" title="anterior">⏮</div>
+    <div class="ctrl-btn big" id="btnPlayPause" title="tocar/pausar">⏵</div>
+    <div class="ctrl-btn" id="btnNext" title="próxima">⏭</div>
+    <div class="ctrl-btn" id="btnTalk" title="ouvir o locutor de novo">🎙</div>
+  </div>
+
+  <div class="volume-row" id="volumeRow" style="display:none;">
+    <span>🔈</span>
+    <input type="range" id="volume" min="0" max="100" value="70">
+    <span>🔊</span>
+  </div>
+
+  <div class="status-line" id="statusLine"></div>
+  <div class="footer-note">roda 100% no seu navegador · nada é enviado a servidores além do Spotify e da Wikipédia</div>
+</div>
+
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  const REDIRECT_URI = window.location.origin + window.location.pathname;
+  document.getElementById('redirectShow').textContent = REDIRECT_URI;
+
+  const SCOPES = [
+    'streaming','user-read-email','user-read-private',
+    'user-read-playback-state','user-modify-playback-state',
+    'playlist-read-private','playlist-read-collaborative'
+  ].join(' ');
+
+  const els = {
+    ledAuth: document.getElementById('ledAuth'),
+    ledPlayer: document.getElementById('ledPlayer'),
+    panelSetup: document.getElementById('panel-setup'),
+    panelPlaylists: document.getElementById('panel-playlists'),
+    panelPlayer: document.getElementById('panel-player'),
+    clientId: document.getElementById('clientId'),
+    btnConnect: document.getElementById('btnConnect'),
+    tapeList: document.getElementById('tapeList'),
+    trackArt: document.getElementById('trackArt'),
+    artWrap: document.getElementById('artWrap'),
+    trackName: document.getElementById('trackName'),
+    trackArtist: document.getElementById('trackArtist'),
+    trackAlbum: document.getElementById('trackAlbum'),
+    caption: document.getElementById('caption'),
+    vu: document.getElementById('vu'),
+    controls: document.getElementById('playerControls'),
+    volumeRow: document.getElementById('volumeRow'),
+    volume: document.getElementById('volume'),
+    btnPrev: document.getElementById('btnPrev'),
+    btnNext: document.getElementById('btnNext'),
+    btnPlayPause: document.getElementById('btnPlayPause'),
+    btnTalk: document.getElementById('btnTalk'),
+    statusLine: document.getElementById('statusLine'),
+  };
+
+  function showPanel(name){
+    [els.panelSetup, els.panelPlaylists, els.panelPlayer].forEach(p => p.classList.remove('active'));
+    ({setup:els.panelSetup, playlists:els.panelPlaylists, player:els.panelPlayer})[name].classList.add('active');
+  }
+  function setStatus(msg){ els.statusLine.textContent = msg || ''; }
+
+  // ---------- PKCE helpers ----------
+  function randomString(len){
+    const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let out='';
+    const arr = new Uint8Array(len);
+    crypto.getRandomValues(arr);
+    for (let i=0;i<len;i++) out += chars[arr[i] % chars.length];
+    return out;
+  }
+  async function sha256(plain){
+    const data = new TextEncoder().encode(plain);
+    return crypto.subtle.digest('SHA-256', data);
+  }
+  function base64url(buffer){
+    let str = '';
+    const bytes = new Uint8Array(buffer);
+    for (let i=0;i<bytes.length;i++) str += String.fromCharCode(bytes[i]);
+    return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  // ---------- token storage ----------
+  const store = {
+    get access(){ return localStorage.getItem('rr_access_token'); },
+    set access(v){ localStorage.setItem('rr_access_token', v); },
+    get refresh(){ return localStorage.getItem('rr_refresh_token'); },
+    set refresh(v){ localStorage.setItem('rr_refresh_token', v); },
+    get expiresAt(){ return Number(localStorage.getItem('rr_expires_at') || 0); },
+    set expiresAt(v){ localStorage.setItem('rr_expires_at', String(v)); },
+    get clientId(){ return localStorage.getItem('rr_client_id') || ''; },
+    set clientId(v){ localStorage.setItem('rr_client_id', v); },
+  };
+  els.clientId.value = store.clientId;
+
+  async function ensureFreshToken(){
+    if (store.access && Date.now() < store.expiresAt - 30000) return store.access;
+    if (!store.refresh) return null;
+    const body = new URLSearchParams({
+      grant_type:'refresh_token',
+      refresh_token: store.refresh,
+      client_id: store.clientId
+    });
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    store.access = data.access_token;
+    store.expiresAt = Date.now() + (data.expires_in*1000);
+    if (data.refresh_token) store.refresh = data.refresh_token;
+    return store.access;
+  }
+
+  els.btnConnect.addEventListener('click', async () => {
+    const id = els.clientId.value.trim();
+    if (!id){ setStatus('cole o Client ID primeiro.'); return; }
+    store.clientId = id;
+    const verifier = randomString(64);
+    sessionStorage.setItem('rr_verifier', verifier);
+    const challenge = base64url(await sha256(verifier));
+    const params = new URLSearchParams({
+      client_id:id,
+      response_type:'code',
+      redirect_uri:REDIRECT_URI,
+      scope:SCOPES,
+      code_challenge_method:'S256',
+      code_challenge:challenge
+    });
+    window.location.href = 'https://accounts.spotify.com/authorize?' + params.toString();
+  });
+
+  async function handleAuthCallback(){
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (!code) return false;
+    const verifier = sessionStorage.getItem('rr_verifier');
+    const id = store.clientId;
+    const body = new URLSearchParams({
+      grant_type:'authorization_code',
+      code,
+      redirect_uri:REDIRECT_URI,
+      client_id:id,
+      code_verifier:verifier
+    });
+    setStatus('trocando código por token...');
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body
+    });
+    window.history.replaceState({}, document.title, window.location.pathname);
+    if (!res.ok){ setStatus('falha na autenticação. confira o Client ID e o Redirect URI.'); return false; }
+    const data = await res.json();
+    store.access = data.access_token;
+    store.refresh = data.refresh_token;
+    store.expiresAt = Date.now() + (data.expires_in*1000);
+    return true;
+  }
+
+  // ---------- Spotify Web API ----------
+  async function spotifyFetch(path, opts){
+    const token = await ensureFreshToken();
+    if (!token) throw new Error('sem token');
+    opts = opts || {};
+    opts.headers = Object.assign({}, opts.headers, { Authorization: 'Bearer ' + token });
+    const res = await fetch('https://api.spotify.com/v1' + path, opts);
+    if (res.status === 204) return null;
+    if (!res.ok) throw new Error('spotify api ' + res.status);
+    return res.json();
+  }
+
+  async function loadPlaylists(){
+    setStatus('carregando suas playlists...');
+    const data = await spotifyFetch('/me/playlists?limit=50');
+    els.tapeList.innerHTML = '';
+    (data.items||[]).forEach(pl => {
+      const div = document.createElement('div');
+      div.className = 'tape';
+      const img = pl.images && pl.images[0] ? pl.images[0].url : '';
+      div.innerHTML = '<img src="'+img+'" alt=""><span>'+escapeHtml(pl.name)+' <span style="opacity:.6">('+pl.tracks.total+' faixas)</span></span>';
+      div.addEventListener('click', () => selectPlaylist(pl));
+      els.tapeList.appendChild(div);
+    });
+    showPanel('playlists');
+    setStatus('');
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  }
+
+  // ---------- queue & playback ----------
+  let queue = [];
+  let queueIndex = -1;
+  let player = null;
+  let deviceId = null;
+  let endTimer = null;
+  let currentUtterance = null;
+
+  async function selectPlaylist(pl){
+    setStatus('carregando faixas de "'+pl.name+'"...');
+    let items = [];
+    let url = '/playlists/' + pl.id + '/tracks?limit=100';
+    while (url) {
+      const data = await spotifyFetch(url.startsWith('http') ? url.replace('https://api.spotify.com/v1','') : url);
+      items = items.concat(data.items||[]);
+      url = data.next ? data.next : null;
+    }
+    queue = items.map(it => it.track).filter(Boolean);
+    if (!queue.length){ setStatus('essa playlist está vazia.'); return; }
+    // shuffle a bit for radio feel, keep first as-is
+    setStatus('');
+    showPanel('player');
+    els.controls.style.display = 'flex';
+    els.volumeRow.style.display = 'flex';
+    queueIndex = -1;
+    playNext();
+  }
+
+  function updateNowPlayingUI(track){
+    els.trackName.textContent = track.name;
+    els.trackArtist.textContent = (track.artists||[]).map(a=>a.name).join(', ');
+    els.trackAlbum.textContent = track.album ? track.album.name : '';
+    els.trackArt.src = (track.album && track.album.images && track.album.images[0]) ? track.album.images[0].url : '';
+  }
+
+  function setSpinning(on){
+    els.artWrap.classList.toggle('spin', on);
+    els.vu.classList.toggle('paused', !on);
+  }
+
+  // fun fact via Wikipedia (best effort)
+  async function fetchArtistFact(artistName){
+    const tryLangs = ['pt','en'];
+    for (const lang of tryLangs){
+      try{
+        const res = await fetch('https://'+lang+'.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(artistName));
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data.extract && data.type !== 'disambiguation'){
+          const sentence = data.extract.split(/(?<=[.!?])\s/)[0];
+          return sentence;
+        }
+      }catch(e){ /* ignore, try next */ }
+    }
+    return null;
+  }
+
+  function pickVoice(){
+    const voices = speechSynthesis.getVoices();
+    return voices.find(v => v.lang && v.lang.toLowerCase().startsWith('pt')) || voices[0] || null;
+  }
+
+  function speak(text){
+    return new Promise(resolve => {
+      if (!('speechSynthesis' in window)){ resolve(); return; }
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'pt-BR';
+      const v = pickVoice();
+      if (v) u.voice = v;
+      u.rate = 0.98;
+      u.pitch = 1.0;
+      currentUtterance = u;
+      els.caption.classList.add('speaking');
+      els.caption.textContent = text;
+      u.onend = () => { els.caption.classList.remove('speaking'); resolve(); };
+      u.onerror = () => { els.caption.classList.remove('speaking'); resolve(); };
+      speechSynthesis.speak(u);
+    });
+  }
+
+  async function narrate(track){
+    const artistName = (track.artists && track.artists[0]) ? track.artists[0].name : '';
+    const year = (track.album && track.album.release_date) ? track.album.release_date.slice(0,4) : null;
+    let line = 'E lá vamos nós: "'+track.name+'", de '+artistName+'.';
+    if (year) line += ' Do álbum "'+track.album.name+'", de '+year+'.';
+    setStatus('o locutor está preparando a próxima faixa...');
+    const fact = await fetchArtistFact(artistName).catch(()=>null);
+    if (fact) line += ' ' + fact;
+    line += ' Boa audição!';
+    setStatus('');
+    await speak(line);
+  }
+
+  async function playTrackNow(track){
+    if (!deviceId){ setStatus('player do Spotify ainda não está pronto.'); return; }
+    await spotifyFetch('/me/player/play?device_id='+deviceId, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ uris:[track.uri] })
+    });
+    setSpinning(true);
+    els.btnPlayPause.textContent = '⏸';
+    if (endTimer) clearTimeout(endTimer);
+    const dur = track.duration_ms || 180000;
+    endTimer = setTimeout(playNext, Math.max(dur - 300, 3000));
+  }
+
+  async function playNext(){
+    if (!queue.length) return;
+    queueIndex = (queueIndex + 1) % queue.length;
+    const track = queue[queueIndex];
+    updateNowPlayingUI(track);
+    setSpinning(false);
+    await narrate(track);
+    await playTrackNow(track);
+  }
+
+  async function playPrev(){
+    if (!queue.length) return;
+    queueIndex = (queueIndex - 1 + queue.length) % queue.length;
+    const track = queue[queueIndex];
+    updateNowPlayingUI(track);
+    setSpinning(false);
+    if (endTimer) clearTimeout(endTimer);
+    await narrate(track);
+    await playTrackNow(track);
+  }
+
+  els.btnNext.addEventListener('click', () => { if (endTimer) clearTimeout(endTimer); speechSynthesis.cancel(); playNext(); });
+  els.btnPrev.addEventListener('click', () => { speechSynthesis.cancel(); playPrev(); });
+  els.btnTalk.addEventListener('click', () => { if (queueIndex>=0) narrate(queue[queueIndex]); });
+  els.btnPlayPause.addEventListener('click', async () => {
+    if (!player) return;
+    const state = await player.getCurrentState();
+    if (state && !state.paused){
+      await player.pause();
+      els.btnPlayPause.textContent = '⏵';
+      setSpinning(false);
+      if (endTimer) clearTimeout(endTimer);
+    } else {
+      await player.resume();
+      els.btnPlayPause.textContent = '⏸';
+      setSpinning(true);
+    }
+  });
+  els.volume.addEventListener('input', () => {
+    if (player) player.setVolume(Number(els.volume.value)/100);
+  });
+
+  // ---------- Web Playback SDK ----------
+  function initPlayer(){
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      player = new Spotify.Player({
+        name: 'Rádio Retrô 80s',
+        getOAuthToken: cb => { ensureFreshToken().then(t => cb(t)); },
+        volume: 0.7
+      });
+      player.addListener('ready', ({device_id}) => {
+        deviceId = device_id;
+        els.ledPlayer.classList.add('on');
+        setStatus('player pronto. escolha uma playlist.');
+        loadPlaylists().catch(e => setStatus('erro ao carregar playlists: '+e.message));
+      });
+      player.addListener('not_ready', () => { els.ledPlayer.classList.remove('on'); });
+      player.addListener('initialization_error', ({message}) => setStatus('erro de inicialização: '+message));
+      player.addListener('authentication_error', ({message}) => setStatus('erro de autenticação: '+message));
+      player.addListener('account_error', ({message}) => setStatus('conta sem Premium? '+message));
+      player.connect();
+    };
+    // if SDK script already loaded before this ran, trigger manually
+    if (window.Spotify) window.onSpotifyWebPlaybackSDKReady();
+  }
+
+  // ---------- boot ----------
+  (async function boot(){
+    const gotCode = await handleAuthCallback();
+    if (gotCode || store.access){
+      els.ledAuth.classList.add('on');
+      setStatus('conectando o player...');
+      initPlayer();
+    } else {
+      showPanel('setup');
+    }
+  })();
+
+  if ('speechSynthesis' in window){
+    speechSynthesis.onvoiceschanged = () => {};
+  }
+})();
+</script>
+</body>
+</html>
